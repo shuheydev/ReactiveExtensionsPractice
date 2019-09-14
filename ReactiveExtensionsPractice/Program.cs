@@ -10,8 +10,22 @@ namespace ReactiveExtensionsPractice
             var source = new NumberObservable();
 
             //監視役を2つ登録
-            var sbscriber1 = source.Subscribe(new PrintObserver());
-            var sbscriber2 = source.Subscribe(new PrintObserver());
+            var sbscriber1 = source.Subscribe(
+                    //OnNext
+                    value => Console.WriteLine($"OnNext({value}) called."),
+                    //OnError
+                    ex => Console.WriteLine($"OnError({ex.Message})"),
+                    //OnCompleted
+                    () => Console.WriteLine($"OnCompleted() called.")
+                );
+            var sbscriber2 = source.Subscribe(
+                    //OnNext
+                    value => Console.WriteLine($"OnNext({value}) called."),
+                    //OnError
+                    ex => Console.WriteLine($"OnError({ex.Message})"),
+                    //OnCompleted
+                    () => Console.WriteLine($"OnCompleted() called.")
+                );
 
             //監視される人の処理を実行
             Console.WriteLine("## Execute(1)");
@@ -31,7 +45,14 @@ namespace ReactiveExtensionsPractice
 
             //完了通知
             //もう1つ監視役を追加して完了通知を行う
-            var sbscriber3 = source.Subscribe(new PrintObserver());
+            var sbscriber3 = source.Subscribe(
+                    //OnNext
+                    value => Console.WriteLine($"OnNext({value}) called."),
+                    //OnError
+                    ex => Console.WriteLine($"OnError({ex.Message})"),
+                    //OnCompleted
+                    () => Console.WriteLine($"OnCompleted() called.")
+                );
             Console.WriteLine("## Completed");
             source.Completed();
         }
