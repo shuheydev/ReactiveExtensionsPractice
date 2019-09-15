@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using System.Threading;
 
 namespace ReactiveExtensionsPractice
 {
@@ -9,44 +12,130 @@ namespace ReactiveExtensionsPractice
     {
         static void Main(string[] args)
         {
-            var a = new List<List<int>> {
-             new List<int>{1,2,3},
-             new List<int>{4,5,6},
-             new List<int>{7,8,9}
-            };
+            Observable.Range(1, 10)
+                //3つずつの値に分ける
+                .Buffer(3)
+                .Subscribe(
+                    list =>
+                    {
+                        //IList<int>の内容を出力
+                        Console.WriteLine("-- Buffer start");
+                        foreach (var i in list)
+                        {
+                            Console.WriteLine(i);
+                        }
+                    },
+                    //完了
+                    () => Console.WriteLine("OnCompleted")
+                );
 
-            var b = a.Select(list => list.Aggregate((x, y) => x > y ? x : y));
+            Observable.Range(1, 10)
+                //3つずつの値に分けて、値は2つ飛ばし
+                .Buffer(3, 2)
+                .Subscribe(
+                    list =>
+                    {
+                        //IList<int>の内容を出力
+                        Console.WriteLine("-- Buffer start");
+                        foreach (var i in list)
+                        {
+                            Console.WriteLine(i);
+                        }
+                    },
+                    //完了
+                    () => Console.WriteLine("OnCompleted")
+                );
 
-            Console.WriteLine(b.First());
+            Observable.Range(1, 10)
+                //3つずつの値に分けて、値は2つ飛ばし
+                .Buffer(3, 5)
+                .Subscribe(
+                    list =>
+                    {
+                        //IList<int>の内容を出力
+                        Console.WriteLine("-- Buffer start");
+                        foreach (var i in list)
+                        {
+                            Console.WriteLine(i);
+                        }
+                    },
+                    //完了
+                    () => Console.WriteLine("OnCompleted")
+                );
 
-            Console.ReadKey();
+            var gate = new EventWaitHandle(false, EventResetMode.AutoReset);
+            Observable
+                //500msごとに値を発行
+                .Interval(TimeSpan.FromMilliseconds(500))
+                //3秒間溜める
+                .Buffer(TimeSpan.FromSeconds(3))
+                //最初の3つのかたまりを後続に流す
+                .Take(3)
+                .Subscribe(
+                    l =>
+                    {
+                        // 値を表示
+                        Console.WriteLine("--Buffer {0:HH:mm:ss}", DateTime.Now);
+                        foreach (var i in l)
+                        {
+                            Console.WriteLine(i);
+                        }
+                    },
+                    () =>
+                    {
+                        // 完了
+                        Console.WriteLine("OnCompleted");
+                        gate.Set();
+                    });
 
-            // 10個のセンサーを作成
-            var sensors = Enumerable.Range(1, 10).Select(i => new Sensor("Sensor#" + i)).ToArray();
-            // 10個のセンサーの値発行イベントをマージ
-            var subscription = Observable.Merge(
-                sensors.Select(sensor => Observable.FromEvent<EventHandler<SensorEventArgs>, SensorEventArgs>(
-                    h => (s, e) => h(e),
-                    h => sensor.Publish += h,
-                    h => sensor.Publish -= h)))
-                // 10秒ためて
-                .Buffer(TimeSpan.FromSeconds(2))
-                // その中から最大のものを探して
-                .Select(values => values.Aggregate((x, y) => x.Value > y.Value ? x : y))
-            // 表示する
-                .Subscribe(e => Console.WriteLine("{0}: {1}", e.Name, e.Value));
+            // OnCompleted待ち
+            Console.WriteLine("WaitOne");
+            gate.WaitOne();
+            Console.WriteLine("WaitOne Completed");
 
-            // センサースタート
-            foreach (var sensor in sensors)
-            {
-                sensor.Start();
-            }
+            gate = new EventWaitHandle(false, EventResetMode.AutoReset);
+            var clickEmuration = new Subject<Unit>();
+            Observable
+                //500ms間隔で値を発行
+                .Interval(TimeSpan.FromMilliseconds(500))
+                //任意の値で値をまとめるのをやめる（この場合3秒間隔）
+                .Buffer(
+                    //clickEmurationから通知が来たら
+                    clickEmuration.AsObservable(),
+                    //2秒間値を集める
+                    _ => Observable.Interval(TimeSpan.FromSeconds(2))
+                )
+                .Take(2)
+                .Subscribe(
+                    list =>
+                    {
+                        //値を表示
+                        Console.WriteLine($"--Buffer {DateTime.Now.ToString("0:HH:mm:ss")}");
+                        foreach (var i in list)
+                        {
+                            Console.WriteLine(i);
+                        }
+                    },
+                    () =>
+                    {
+                        //完了
+                        Console.WriteLine("OnCompleted");
+                        gate.Set();
+                    }
+                );
 
-            Console.WriteLine("Sensor started.");
             Console.ReadLine();
-            // 最後にセンサーのPublishイベントの購読解除
-            subscription.Dispose();
-            Console.ReadKey();
+            Console.WriteLine("{0:HH:mm:ss} Click emurate", DateTime.Now);
+            clickEmuration.OnNext(Unit.Default);
+
+            //Enterを押すとクリックを模したSubjectから通知を上げる
+            Console.ReadLine();
+            Console.WriteLine("{0:HH:mm:ss} Click emurate", DateTime.Now);
+            clickEmuration.OnNext(Unit.Default);
+
+            //OnCompleted待ち
+            gate.WaitOne();
+            Console.WriteLine("WaiteOne Completed");
         }
     }
 }
