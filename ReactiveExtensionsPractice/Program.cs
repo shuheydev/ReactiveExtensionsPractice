@@ -12,39 +12,34 @@ namespace ReactiveExtensionsPractice
     {
         static void Main(string[] args)
         {
+            //Subject
             var source = new Subject<int>();
 
-            source
-                .Throttle(TimeSpan.FromMilliseconds(500))
-                //渡ってきた値を時間付きで表示
-                .Subscribe(i =>
-                    Console.WriteLine("{0:HH:mm:ss.fff} {1}", DateTime.Now, i));
+            Console.WriteLine("# Subscribe1");
+            source.Subscribe(
+                   i => Console.WriteLine($"Subscribe1#OnNext:{i}"),
+                   ex => Console.WriteLine($"Subscribe1#OnError: {ex}"),
+                   () => Console.WriteLine($"Subscribe1#OnCompleted")
+                );
 
-            //100ms間隔で値を発行
-            foreach (var i in Enumerable.Range(1, 10))
-            {
-                //発行した値を出力しておく
-                Console.WriteLine("{0:HH:mm:ss.fff} OnNext({1})", DateTime.Now, i);
-                source.OnNext(i);
-                Thread.Sleep(100);
-            }
+            Console.WriteLine("OnNext(1)");
+            source.OnNext(1);
 
-            // 2000ms sleep
-            Console.WriteLine("{0:HH:mm:ss.fff} Sleep(2000)", DateTime.Now);
-            Thread.Sleep(2000);
+            Console.WriteLine("OnNext(2)");
+            source.OnNext(2);
 
-            // 100ms間隔で値を発行
-            foreach (var i in Enumerable.Range(1, 5))
-            {
-                // 発行した値を出力しておく
-                Console.WriteLine("{0:HH:mm:ss.fff} OnNext({1})", DateTime.Now, i);
-                source.OnNext(i);
-                Thread.Sleep(100);
-            }
+            Console.WriteLine("# Subscribe2");
+            source.Subscribe(
+                    i => Console.WriteLine($"Subscribe2#OnNext:{i}"),
+                    ex => Console.WriteLine($"Subscribe2#OnError:{ex}"),
+                    () => Console.WriteLine($"Subscribe2#OnCompleted")
+                );
 
-            // 2000ms sleep
-            Console.WriteLine("{0:HH:mm:ss.FFF} Sleep(2000)", DateTime.Now);
-            Thread.Sleep(2000);
+            Console.WriteLine("OnNext(3)");
+            source.OnNext(3);
+
+            Console.WriteLine("OnNext(3)");
+            source.OnNext(3);
         }
     }
 }
