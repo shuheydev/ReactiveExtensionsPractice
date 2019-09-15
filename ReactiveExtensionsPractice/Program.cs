@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reactive.Linq;
 
 namespace ReactiveExtensionsPractice
 {
@@ -6,55 +9,44 @@ namespace ReactiveExtensionsPractice
     {
         static void Main(string[] args)
         {
-            //監視される人を作成
-            var source = new NumberObservable();
+            var a = new List<List<int>> {
+             new List<int>{1,2,3},
+             new List<int>{4,5,6},
+             new List<int>{7,8,9}
+            };
 
-            //監視役を2つ登録
-            var sbscriber1 = source.Subscribe(
-                    //OnNext
-                    value => Console.WriteLine($"OnNext({value}) called."),
-                    //OnError
-                    ex => Console.WriteLine($"OnError({ex.Message})"),
-                    //OnCompleted
-                    () => Console.WriteLine($"OnCompleted() called.")
-                );
-            var sbscriber2 = source.Subscribe(
-                    //OnNext
-                    value => Console.WriteLine($"OnNext({value}) called."),
-                    //OnError
-                    ex => Console.WriteLine($"OnError({ex.Message})"),
-                    //OnCompleted
-                    () => Console.WriteLine($"OnCompleted() called.")
-                );
+            var b = a.Select(list => list.Aggregate((x, y) => x > y ? x : y));
 
-            //監視される人の処理を実行
-            Console.WriteLine("## Execute(1)");
-            source.Execute(1);
+            Console.WriteLine(b.First());
 
-            //片方を監視する人から解雇
-            Console.WriteLine("## Dispose");
-            sbscriber2.Dispose();
+            Console.ReadKey();
 
-            //再度処理を実行
-            Console.WriteLine("## Execute(2)");
-            source.Execute(2);
+            // 10個のセンサーを作成
+            var sensors = Enumerable.Range(1, 10).Select(i => new Sensor("Sensor#" + i)).ToArray();
+            // 10個のセンサーの値発行イベントをマージ
+            var subscription = Observable.Merge(
+                sensors.Select(sensor => Observable.FromEvent<EventHandler<SensorEventArgs>, SensorEventArgs>(
+                    h => (s, e) => h(e),
+                    h => sensor.Publish += h,
+                    h => sensor.Publish -= h)))
+                // 10秒ためて
+                .Buffer(TimeSpan.FromSeconds(2))
+                // その中から最大のものを探して
+                .Select(values => values.Aggregate((x, y) => x.Value > y.Value ? x : y))
+            // 表示する
+                .Subscribe(e => Console.WriteLine("{0}: {1}", e.Name, e.Value));
 
-            //エラーを起こしてみる
-            Console.WriteLine("## Execute(0)");
-            source.Execute(0);
+            // センサースタート
+            foreach (var sensor in sensors)
+            {
+                sensor.Start();
+            }
 
-            //完了通知
-            //もう1つ監視役を追加して完了通知を行う
-            var sbscriber3 = source.Subscribe(
-                    //OnNext
-                    value => Console.WriteLine($"OnNext({value}) called."),
-                    //OnError
-                    ex => Console.WriteLine($"OnError({ex.Message})"),
-                    //OnCompleted
-                    () => Console.WriteLine($"OnCompleted() called.")
-                );
-            Console.WriteLine("## Completed");
-            source.Completed();
+            Console.WriteLine("Sensor started.");
+            Console.ReadLine();
+            // 最後にセンサーのPublishイベントの購読解除
+            subscription.Dispose();
+            Console.ReadKey();
         }
     }
 }
